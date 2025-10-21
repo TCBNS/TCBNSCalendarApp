@@ -18,13 +18,11 @@
         }
         .calendar-day {
             border-color: #4a4a4a; /* A defined border color for dark mode */
+            overflow: hidden; /* Prevent content from pushing the cell size */
         }
         .appointment {
-            display: block;
+            display: block; /* Reverted for full background */
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: normal; /* Allow wrapping */
-            word-wrap: break-word;
             cursor: pointer;
             transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
         }
@@ -59,16 +57,12 @@
 
     <div class="flex flex-col h-screen p-4">
         <!-- Main Content -->
-        <main id="calendar-container" class="bg-[#121212] rounded-lg shadow-xl p-4 flex-grow flex flex-col">
+        <main id="calendar-container" class="bg-[#121212] rounded-lg shadow-xl p-4 flex-grow flex flex-col min-h-0">
             <!-- Calendar Header -->
             <div class="flex items-center justify-between mb-4">
-                <!-- Left: Logo -->
-                <div class="flex items-center">
-                    <img src="https://tcbns.com/wp-content/uploads/2021/05/TCBNS_Full_Simp_Light.png" alt="Logo" class="h-10">
-                </div>
-                
-                <!-- Center: Month Navigation -->
+                <!-- Left: Logo & Nav -->
                 <div class="flex items-center space-x-4">
+                    <img src="https://tcbns.com/wp-content/uploads/2021/05/TCBNS_Full_Simp_Light.png" alt="Logo" class="h-10">
                     <button id="prev-month" class="p-2 rounded-full hover:bg-gray-800 transition-colors">
                         <svg class="w-6 h-6 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
@@ -76,6 +70,11 @@
                     <button id="next-month" class="p-2 rounded-full hover:bg-gray-800 transition-colors">
                         <svg class="w-6 h-6 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
+                </div>
+
+                <!-- Center: Legend -->
+                <div id="category-legend" class="flex-grow flex justify-center items-center gap-x-4 px-4">
+                    <!-- Legend will be injected here -->
                 </div>
 
                 <!-- Right: Clock/Date -->
@@ -88,12 +87,8 @@
             <div id="loader" class="mx-auto my-auto" style="border: 4px solid #4a4a4a; border-top: 4px solid #f58220; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
             <div id="error-message" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg m-auto"></div>
             
-            <div id="calendar" class="calendar-grid flex-grow hidden border-t border-l border-[#4a4a4a]">
+            <div id="calendar" class="calendar-grid flex-grow hidden border-t border-l border-[#4a4a4a] min-h-0">
                 <!-- Calendar will be injected here -->
-            </div>
-             <!-- Category Legend -->
-            <div id="category-legend" class="pt-4 mt-2 border-t border-[#4a4a4a] flex flex-wrap gap-x-6 gap-y-2">
-                <!-- Legend will be injected here -->
             </div>
         </main>
     </div>
@@ -110,7 +105,7 @@
             <div class="p-6 overflow-y-auto space-y-4">
                  <div>
                     <h4 class="font-semibold text-gray-400 uppercase tracking-wider text-xs">Category</h4>
-                    <p id="event-modal-category" class="text-gray-200 mt-1 inline-block"></p>
+                    <div id="event-modal-category" class="mt-1 flex flex-wrap gap-2"></div>
                 </div>
                 <div>
                     <h4 class="font-semibold text-gray-400 uppercase tracking-wider text-xs">Time</h4>
@@ -124,6 +119,21 @@
                     <h4 class="font-semibold text-gray-400 uppercase tracking-wider text-xs">Details</h4>
                     <div id="event-modal-body" class="prose prose-invert max-w-none text-gray-300 mt-1"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Day Events Modal -->
+    <div id="day-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50 modal-fade-in">
+        <div class="bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col transform transition-transform duration-300 scale-95">
+            <header class="flex items-center justify-between p-4 border-b border-[#4a4a4a]">
+                <h3 id="day-modal-title" class="text-xl font-bold text-brand-blue"></h3>
+                <button id="day-modal-close" class="p-2 rounded-full hover:bg-gray-800 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </header>
+            <div id="day-modal-events" class="p-6 overflow-y-auto space-y-3">
+                <!-- Events for the day will be listed here -->
             </div>
         </div>
     </div>
@@ -142,7 +152,7 @@
         const liveTimeEl = document.getElementById('live-time');
         const liveDateEl = document.getElementById('live-date');
         
-        // Modal elements
+        // Event Modal elements
         const eventModal = document.getElementById('event-modal');
         const eventModalContent = eventModal.querySelector('div');
         const eventModalTitle = document.getElementById('event-modal-title');
@@ -152,17 +162,25 @@
         const eventModalBody = document.getElementById('event-modal-body');
         const eventModalClose = document.getElementById('event-modal-close');
 
+        // Day Modal elements
+        const dayModal = document.getElementById('day-modal');
+        const dayModalContent = dayModal.querySelector('div');
+        const dayModalTitle = document.getElementById('day-modal-title');
+        const dayModalEvents = document.getElementById('day-modal-events');
+        const dayModalClose = document.getElementById('day-modal-close');
+
         let currentDate = new Date();
         let allFetchedEvents = [];
         
+        // --- CATEGORY COLOR MAPPING ---
         const categoryColors = {
-            'Red category': { bg: 'bg-red-500/30', text: 'text-red-300', border: 'border-red-500'},
-            'Orange category': { bg: 'bg-orange-500/30', text: 'text-orange-300', border: 'border-orange-500' },
-            'Yellow category': { bg: 'bg-yellow-500/30', text: 'text-yellow-300', border: 'border-yellow-500' },
-            'Green category': { bg: 'bg-green-500/30', text: 'text-green-300', border: 'border-green-500' },
-            'Blue category': { bg: 'bg-blue-500/30', text: 'text-blue-300', border: 'border-blue-500' },
-            'Purple category': { bg: 'bg-purple-500/30', text: 'text-purple-300', border: 'border-purple-500' },
-            'default': { bg: 'bg-brand-blue/30', text: 'text-brand-blue', border: 'border-brand-blue' }
+            'Alex': { bg: 'bg-purple-500/30', text: 'text-purple-300', solid: 'bg-purple-500', hex: '#a855f7' },
+            'Shane': { bg: 'bg-yellow-500/30', text: 'text-yellow-300', solid: 'bg-yellow-500', hex: '#eab308' },
+            'TCBNS': { bg: 'bg-blue-500/30', text: 'text-blue-300', solid: 'bg-blue-500', hex: '#3b82f6' },
+            'Tim': { bg: 'bg-green-500/30', text: 'text-green-300', solid: 'bg-green-500', hex: '#22c55e' },
+            'Tyler': { bg: 'bg-red-500/30', text: 'text-red-300', solid: 'bg-red-500', hex: '#ef4444' },
+            'Holiday': { bg: 'bg-gray-500/30', text: 'text-gray-300', solid: 'bg-gray-500', hex: '#6b7280' },
+            'default': { bg: 'bg-brand-blue/30', text: 'text-brand-blue', solid: 'bg-brand-blue', hex: '#00a9e0' }
         };
 
         // --- CLOCK AND DATE ---
@@ -213,7 +231,7 @@
                 const legendItem = document.createElement('div');
                 legendItem.className = 'flex items-center text-sm';
                 legendItem.innerHTML = `
-                    <span class="w-3 h-3 rounded-full mr-2 ${colorInfo.bg} border ${colorInfo.border}"></span>
+                    <span class="w-3 h-3 rounded-full mr-2 ${colorInfo.solid}"></span>
                     <span>${category}</span>
                 `;
                 legendContainer.appendChild(legendItem);
@@ -248,7 +266,7 @@
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
                 const dayEl = document.createElement('div');
-                dayEl.className = `calendar-day relative p-2 border-b border-r border-[#4a4a4a] overflow-y-auto ${isCurrentMonth ? '' : 'text-gray-600'} ${isWeekend && isCurrentMonth ? 'bg-black/20' : ''}`;
+                dayEl.className = `calendar-day relative p-2 border-b border-r border-[#4a4a4a] ${isCurrentMonth ? '' : 'text-gray-600'} ${isWeekend && isCurrentMonth ? 'bg-black/20' : ''}`;
                 
                 const isToday = day.toDateString() === new Date().toDateString();
 
@@ -261,23 +279,33 @@
                 if (eventsForDay.length > 0) {
                     const eventsContainer = document.createElement('div');
                     eventsContainer.className = 'mt-1 space-y-1';
-                    eventsForDay.forEach(event => {
-                        const eventCategory = (event.categories && event.categories.length > 0) ? event.categories[0] : 'default';
-                        const colorInfo = categoryColors[eventCategory] || categoryColors['default'];
 
-                        const eventEl = document.createElement('div');
-                        eventEl.className = `appointment ${colorInfo.bg} ${colorInfo.text} p-1 rounded-md text-xs leading-tight hover:brightness-125`;
-                        
-                        const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-                        eventEl.innerHTML = `<strong class="font-semibold">${time}</strong><br>${event.subject}`;
-                        
-                        eventEl.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            showEventDetails(event);
-                        });
+                    let maxEventsToShow = 3;
+                    const hasOverflow = eventsForDay.length > maxEventsToShow;
+                    
+                    if (hasOverflow) {
+                        maxEventsToShow--;
+                    }
 
+                    const visibleEvents = eventsForDay.slice(0, maxEventsToShow);
+
+                    visibleEvents.forEach(event => {
+                        const eventEl = createEventElement(event);
                         eventsContainer.appendChild(eventEl);
                     });
+
+                    if (hasOverflow) {
+                        const overflowCount = eventsForDay.length - maxEventsToShow;
+                        const overflowEl = document.createElement('div');
+                        overflowEl.className = 'text-xs text-gray-400 mt-1 pl-1 font-medium cursor-pointer hover:underline';
+                        overflowEl.textContent = `+${overflowCount} more`;
+                        overflowEl.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            showDayEvents(day, eventsForDay);
+                        });
+                        eventsContainer.appendChild(overflowEl);
+                    }
+
                     dayEl.appendChild(eventsContainer);
                 }
                 calendarContainer.appendChild(dayEl);
@@ -286,20 +314,73 @@
             }
         }
 
+        function createEventElement(event, isModal = false) {
+            const categories = (event.categories && event.categories.length > 0) ? event.categories : ['default'];
+            
+            const eventEl = document.createElement('div');
+            eventEl.className = `appointment rounded-md hover:brightness-125`;
+            
+            // Handle background coloring
+            if (categories.length === 1) {
+                const colorInfo = categoryColors[categories[0]] || categoryColors['default'];
+                eventEl.classList.add(colorInfo.bg);
+            } else {
+                const gradientColors = categories.map(cat => {
+                    return (categoryColors[cat] || categoryColors['default']).hex;
+                });
+                eventEl.style.backgroundImage = `linear-gradient(to right, ${gradientColors.join(', ')})`;
+            }
+
+            const contentContainer = document.createElement('div');
+            
+            if (isModal) {
+                contentContainer.className = `flex-grow p-3`;
+                const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                contentContainer.innerHTML = `
+                    <div>
+                        <div class="font-bold text-white">${event.subject}</div>
+                        <div class="text-sm text-gray-300">${time}</div>
+                    </div>`;
+            } else {
+                contentContainer.className = `flex-grow p-1 text-xs leading-tight`;
+                const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                contentContainer.innerHTML = `<strong class="font-semibold text-white">${time}</strong><br><span class="text-gray-200">${event.subject}</span>`;
+            }
+            
+            eventEl.appendChild(contentContainer);
+            
+            eventEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(isModal) {
+                    closeDayModal();
+                    setTimeout(() => showEventDetails(event), 300);
+                } else {
+                    showEventDetails(event);
+                }
+            });
+            return eventEl;
+        }
+
         function getEventsForDay(date) {
             return allFetchedEvents.filter(event => {
                 const eventStartDate = new Date(event.start.dateTime);
                 return eventStartDate.toDateString() === date.toDateString();
             });
         }
-
+        
+        // --- MODAL LOGIC ---
         function showEventDetails(event) {
             eventModalTitle.textContent = event.subject || 'No Subject';
             
-            const eventCategory = (event.categories && event.categories.length > 0) ? event.categories[0] : 'No category';
-            const colorInfo = categoryColors[eventCategory] || categoryColors['default'];
-            eventModalCategory.textContent = eventCategory;
-            eventModalCategory.className = `px-2 py-1 text-xs rounded-full ${colorInfo.bg} ${colorInfo.text}`;
+            eventModalCategory.innerHTML = '';
+            const categories = (event.categories && event.categories.length > 0) ? event.categories : ['No category'];
+            categories.forEach(cat => {
+                const colorInfo = categoryColors[cat] || categoryColors['default'];
+                const catEl = document.createElement('span');
+                catEl.textContent = cat;
+                catEl.className = `px-2 py-1 text-xs rounded-full ${colorInfo.bg} ${colorInfo.text}`;
+                eventModalCategory.appendChild(catEl);
+            });
             
             const startTime = new Date(event.start.dateTime).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
             const endTime = new Date(event.end.dateTime).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
@@ -316,6 +397,24 @@
             eventModalContent.classList.add('scale-95');
             setTimeout(() => eventModal.classList.add('hidden'), 300); // Wait for animation
         }
+        
+        function showDayEvents(date, events) {
+            dayModalTitle.textContent = `Events for ${date.toLocaleDateString([], { month: 'long', day: 'numeric' })}`;
+            dayModalEvents.innerHTML = ''; // Clear previous
+            
+            events.forEach(event => {
+                const eventEl = createEventElement(event, true);
+                dayModalEvents.appendChild(eventEl);
+});
+
+            dayModal.classList.remove('hidden');
+            setTimeout(() => dayModalContent.classList.remove('scale-95'), 10);
+        }
+
+        function closeDayModal() {
+            dayModalContent.classList.add('scale-95');
+            setTimeout(() => dayModal.classList.add('hidden'), 300);
+        }
 
         prevMonthBtn.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
@@ -331,6 +430,13 @@
         eventModal.addEventListener('click', (e) => {
             if (e.target === eventModal) {
                 closeEventModal();
+            }
+        });
+
+        dayModalClose.addEventListener('click', closeDayModal);
+        dayModal.addEventListener('click', (e) => {
+            if (e.target === dayModal) {
+                closeDayModal();
             }
         });
 
