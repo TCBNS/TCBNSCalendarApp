@@ -323,10 +323,17 @@
         
         function createEventElement(event, isModal = false) {
             const categories = (event.categories && event.categories.length > 0) ? event.categories : [];
-            const defaultColorInfo = categoryColors['default'];
+            const isHoliday = categories.includes('Holiday');
+            
+            let colorInfo;
+            if (isHoliday) {
+                colorInfo = categoryColors['Holiday'];
+            } else {
+                colorInfo = categoryColors['default'];
+            }
 
             const eventEl = document.createElement('div');
-            eventEl.className = `appointment rounded-md hover:brightness-125 ${isModal ? 'p-3' : 'p-1'} ${defaultColorInfo.bg}`;
+            eventEl.className = `appointment rounded-md hover:brightness-125 ${isModal ? 'p-3' : 'p-1'} ${colorInfo.bg}`;
             
             const contentContainer = document.createElement('div');
             contentContainer.className = `flex-grow ${isModal ? '' : 'text-xs leading-tight'}`;
@@ -344,8 +351,8 @@
             
             eventEl.appendChild(contentContainer);
 
-            // Add multi-category indicator dots if categories exist
-            if (categories.length > 0) {
+            // Add multi-category indicator dots if categories exist and it's NOT a holiday
+            if (categories.length > 0 && !isHoliday) {
                 const dotsContainer = document.createElement('div');
                 dotsContainer.className = 'absolute bottom-1 right-1 flex space-x-1';
                 categories.forEach(cat => {
