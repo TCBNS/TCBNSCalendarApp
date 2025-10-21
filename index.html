@@ -21,10 +21,11 @@
             overflow: hidden; /* Prevent content from pushing the cell size */
         }
         .appointment {
-            display: block; /* Reverted for full background */
+            display: block;
             overflow: hidden;
             cursor: pointer;
             transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+            position: relative;
         }
         .appointment:hover {
             transform: scale(1.05);
@@ -174,13 +175,13 @@
         
         // --- CATEGORY COLOR MAPPING ---
         const categoryColors = {
-            'Alex': { bg: 'bg-purple-500/30', text: 'text-purple-300', solid: 'bg-purple-500', hex: '#a855f7' },
-            'Shane': { bg: 'bg-yellow-500/30', text: 'text-yellow-300', solid: 'bg-yellow-500', hex: '#eab308' },
-            'TCBNS': { bg: 'bg-blue-500/30', text: 'text-blue-300', solid: 'bg-blue-500', hex: '#3b82f6' },
-            'Tim': { bg: 'bg-green-500/30', text: 'text-green-300', solid: 'bg-green-500', hex: '#22c55e' },
-            'Tyler': { bg: 'bg-red-500/30', text: 'text-red-300', solid: 'bg-red-500', hex: '#ef4444' },
-            'Holiday': { bg: 'bg-gray-500/30', text: 'text-gray-300', solid: 'bg-gray-500', hex: '#6b7280' },
-            'default': { bg: 'bg-brand-blue/30', text: 'text-brand-blue', solid: 'bg-brand-blue', hex: '#00a9e0' }
+            'Alex': { bg: 'bg-purple-500/30', text: 'text-purple-300', solid: 'bg-purple-500' },
+            'Shane': { bg: 'bg-yellow-500/30', text: 'text-yellow-300', solid: 'bg-yellow-500' },
+            'TCBNS': { bg: 'bg-blue-500/30', text: 'text-blue-300', solid: 'bg-blue-500' },
+            'Tim': { bg: 'bg-green-500/30', text: 'text-green-300', solid: 'bg-green-500' },
+            'Tyler': { bg: 'bg-red-500/30', text: 'text-red-300', solid: 'bg-red-500' },
+            'Holiday': { bg: 'bg-gray-500/30', text: 'text-gray-300', solid: 'bg-gray-500' },
+            'default': { bg: 'bg-brand-blue/30', text: 'text-brand-blue', solid: 'bg-brand-blue' }
         };
 
         // --- CLOCK AND DATE ---
@@ -194,9 +195,13 @@
 
         // --- CALENDAR LOGIC ---
         async function fetchAllEvents() {
-            loader.classList.remove('hidden');
+            // Do not show loader on background refresh
+            const isInitialLoad = allFetchedEvents.length === 0;
+            if (isInitialLoad) {
+                loader.classList.remove('hidden');
+                calendarContainer.classList.add('hidden');
+            }
             errorMessageContainer.classList.add('hidden');
-            calendarContainer.classList.add('hidden');
 
             try {
                 const response = await fetch(BACKEND_API_URL);
@@ -211,8 +216,10 @@
                 console.error('An error occurred:', error);
                 showError(`Failed to fetch calendar events: ${error.message}`);
             } finally {
-                loader.classList.add('hidden');
-                calendarContainer.classList.remove('hidden');
+                if(isInitialLoad) {
+                    loader.classList.add('hidden');
+                    calendarContainer.classList.remove('hidden');
+                }
             }
         }
 
@@ -313,45 +320,46 @@
                 date.setDate(date.getDate() + 1);
             }
         }
-
+        
         function createEventElement(event, isModal = false) {
-            const categories = (event.categories && event.categories.length > 0) ? event.categories : ['default'];
-            
-            const eventEl = document.createElement('div');
-            eventEl.className = `appointment rounded-md hover:brightness-125`;
-            
-            // Handle background coloring
-            if (categories.length === 1) {
-                const colorInfo = categoryColors[categories[0]] || categoryColors['default'];
-                eventEl.classList.add(colorInfo.bg);
-            } else {
-                const gradientColors = categories.map(cat => {
-                    return (categoryColors[cat] || categoryColors['default']).hex;
-                });
-                eventEl.style.backgroundImage = `linear-gradient(to right, ${gradientColors.join(', ')})`;
-            }
+            const categories = (event.categories && event.categories.length > 0) ? event.categories : [];
+            const defaultColorInfo = categoryColors['default'];
 
-            const contentContainer = document.createElement('div');
+            const eventEl = document.createElement('div');
+            eventEl.className = `appointment rounded-md hover:brightness-125 ${isModal ? 'p-3' : 'p-1'} ${defaultColorInfo.bg}`;
             
+            const contentContainer = document.createElement('div');
+            contentContainer.className = `flex-grow ${isModal ? '' : 'text-xs leading-tight'}`;
+            const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
             if (isModal) {
-                contentContainer.className = `flex-grow p-3`;
-                const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-                contentContainer.innerHTML = `
+                 contentContainer.innerHTML = `
                     <div>
                         <div class="font-bold text-white">${event.subject}</div>
                         <div class="text-sm text-gray-300">${time}</div>
                     </div>`;
             } else {
-                contentContainer.className = `flex-grow p-1 text-xs leading-tight`;
-                const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
                 contentContainer.innerHTML = `<strong class="font-semibold text-white">${time}</strong><br><span class="text-gray-200">${event.subject}</span>`;
             }
             
             eventEl.appendChild(contentContainer);
+
+            // Add multi-category indicator dots if categories exist
+            if (categories.length > 0) {
+                const dotsContainer = document.createElement('div');
+                dotsContainer.className = 'absolute bottom-1 right-1 flex space-x-1';
+                categories.forEach(cat => {
+                    const catColorInfo = categoryColors[cat] || categoryColors['default'];
+                    const dot = document.createElement('span');
+                    dot.className = `w-1.5 h-1.5 rounded-full ${catColorInfo.solid}`;
+                    dotsContainer.appendChild(dot);
+                });
+                eventEl.appendChild(dotsContainer);
+            }
             
             eventEl.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if(isModal) {
+                if (isModal) {
                     closeDayModal();
                     setTimeout(() => showEventDetails(event), 300);
                 } else {
@@ -405,7 +413,7 @@
             events.forEach(event => {
                 const eventEl = createEventElement(event, true);
                 dayModalEvents.appendChild(eventEl);
-});
+            });
 
             dayModal.classList.remove('hidden');
             setTimeout(() => dayModalContent.classList.remove('scale-95'), 10);
@@ -448,9 +456,13 @@
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
+            // Initial setup
             setInterval(updateClock, 1000);
             updateClock();
             fetchAllEvents();
+
+            // Set up automatic refresh every 15 minutes
+            setInterval(fetchAllEvents, 900000); // 15 minutes in milliseconds
         });
     </script>
 </body>
