@@ -337,7 +337,7 @@
             
             const contentContainer = document.createElement('div');
             contentContainer.className = `flex-grow ${isModal ? '' : 'text-xs leading-tight'}`;
-            const time = new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            const time = new Date(event.start.dateTime + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
             if (isModal) {
                  contentContainer.innerHTML = `
@@ -378,7 +378,7 @@
 
         function getEventsForDay(date) {
             return allFetchedEvents.filter(event => {
-                const eventStartDate = new Date(event.start.dateTime);
+                const eventStartDate = new Date(event.start.dateTime + 'Z');
                 return eventStartDate.toDateString() === date.toDateString();
             });
         }
@@ -397,8 +397,8 @@
                 eventModalCategory.appendChild(catEl);
             });
             
-            const startTime = new Date(event.start.dateTime).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-            const endTime = new Date(event.end.dateTime).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+            const startTime = new Date(event.start.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+            const endTime = new Date(event.end.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
             eventModalTime.textContent = `From ${startTime} to ${endTime}`;
             
             eventModalLocation.textContent = event.location.displayName || 'No location specified';
