@@ -71,6 +71,7 @@
                     <button id="next-month" class="p-2 rounded-full hover:bg-gray-800 transition-colors">
                         <svg class="w-6 h-6 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
+                    <button id="today-btn" class="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-brand-blue/80 transition-colors">Today</button>
                 </div>
 
                 <!-- Center: Legend -->
@@ -150,10 +151,11 @@
         const monthYearHeader = document.getElementById('month-year');
         const prevMonthBtn = document.getElementById('prev-month');
         const nextMonthBtn = document.getElementById('next-month');
+        const todayBtn = document.getElementById('today-btn');
         const liveTimeEl = document.getElementById('live-time');
         const liveDateEl = document.getElementById('live-date');
         
-        // Event Modal elements
+        // Modal elements
         const eventModal = document.getElementById('event-modal');
         const eventModalContent = eventModal.querySelector('div');
         const eventModalTitle = document.getElementById('event-modal-title');
@@ -172,6 +174,7 @@
 
         let currentDate = new Date();
         let allFetchedEvents = [];
+        let calendarViewMode = 'today-view'; // 'today-view' or 'month-view'
         
         // --- CATEGORY COLOR MAPPING ---
         const categoryColors = {
@@ -247,15 +250,28 @@
 
         function renderCalendar() {
             calendarContainer.innerHTML = '';
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-
-            monthYearHeader.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
             
-            const firstDayOfMonth = new Date(year, month, 1);
+            let date; // This will be the starting Sunday for the grid
+            let year;
+            let month;
             
-            const date = new Date(year, month, 1);
-            date.setDate(date.getDate() - firstDayOfMonth.getDay());
+            if (calendarViewMode === 'today-view') {
+                const today = new Date();
+                year = today.getFullYear();
+                month = today.getMonth();
+                monthYearHeader.textContent = `${today.toLocaleString('default', { month: 'long' })} ${year}`;
+                
+                date = new Date(); // Start from today
+                date.setDate(date.getDate() - today.getDay()); // Go back to the Sunday of this week
+            } else { // 'month-view'
+                year = currentDate.getFullYear();
+                month = currentDate.getMonth();
+                monthYearHeader.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
+                
+                const firstDayOfMonth = new Date(year, month, 1);
+                date = new Date(year, month, 1);
+                date.setDate(date.getDate() - firstDayOfMonth.getDay());
+            }
             
             // Add day headers (Sun, Mon, etc.)
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -273,7 +289,9 @@
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
                 const dayEl = document.createElement('div');
-                dayEl.className = `calendar-day relative p-2 border-b border-r border-[#4a4a4a] ${isCurrentMonth ? '' : 'text-gray-600'} ${isWeekend && isCurrentMonth ? 'bg-black/20' : ''}`;
+                // Dim non-current month days only in 'month-view'
+                const dimClass = (calendarViewMode === 'month-view' && !isCurrentMonth) ? 'text-gray-600' : '';
+                dayEl.className = `calendar-day relative p-2 border-b border-r border-[#4a4a4a] ${dimClass} ${isWeekend && isCurrentMonth ? 'bg-black/20' : ''}`;
                 
                 const isToday = day.toDateString() === new Date().toDateString();
 
@@ -432,12 +450,20 @@
         }
 
         prevMonthBtn.addEventListener('click', () => {
+            calendarViewMode = 'month-view';
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderCalendar();
         });
 
         nextMonthBtn.addEventListener('click', () => {
+            calendarViewMode = 'month-view';
             currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        });
+        
+        todayBtn.addEventListener('click', () => {
+            calendarViewMode = 'today-view';
+            currentDate = new Date();
             renderCalendar();
         });
         
@@ -466,7 +492,7 @@
             // Initial setup
             setInterval(updateClock, 1000);
             updateClock();
-            fetchAllEvents();
+            fetchAllEvents(); // This will call renderCalendar() on its own
 
             // Set up automatic refresh every 15 minutes
             setInterval(fetchAllEvents, 900000); // 15 minutes in milliseconds
