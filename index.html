@@ -355,16 +355,22 @@
             
             const contentContainer = document.createElement('div');
             contentContainer.className = `flex-grow ${isModal ? '' : 'text-xs leading-tight'}`;
-            const time = new Date(event.start.dateTime + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            
+            let timeString;
+            if (event.isAllDay) {
+                timeString = "All Day";
+            } else {
+                timeString = new Date(event.start.dateTime + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            }
 
             if (isModal) {
                  contentContainer.innerHTML = `
                     <div>
                         <div class="font-bold text-white">${event.subject}</div>
-                        <div class="text-sm text-gray-300">${time}</div>
+                        <div class="text-sm text-gray-300">${timeString}</div>
                     </div>`;
             } else {
-                contentContainer.innerHTML = `<strong class="font-semibold text-white">${time}</strong><br><span class="text-gray-200">${event.subject}</span>`;
+                contentContainer.innerHTML = `<strong class="font-semibold text-white">${timeString}</strong><br><span class="text-gray-200">${event.subject}</span>`;
             }
             
             eventEl.appendChild(contentContainer);
@@ -415,9 +421,22 @@
                 eventModalCategory.appendChild(catEl);
             });
             
-            const startTime = new Date(event.start.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-            const endTime = new Date(event.end.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-            eventModalTime.textContent = `From ${startTime} to ${endTime}`;
+            if (event.isAllDay) {
+                const startDate = new Date(event.start.dateTime + 'Z').toLocaleDateString([], { dateStyle: 'full' });
+                const endDate = new Date(event.end.dateTime + 'Z');
+                endDate.setDate(endDate.getDate() - 1); // Adjust for all-day end time
+                const endDateString = endDate.toLocaleDateString([], { dateStyle: 'full' });
+
+                if (startDate === endDateString) {
+                    eventModalTime.textContent = `All day on ${startDate}`;
+                } else {
+                    eventModalTime.textContent = `All day from ${startDate} to ${endDateString}`;
+                }
+            } else {
+                const startTime = new Date(event.start.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+                const endTime = new Date(event.end.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+                eventModalTime.textContent = `From ${startTime} to ${endTime}`;
+            }
             
             eventModalLocation.textContent = event.location.displayName || 'No location specified';
             eventModalBody.innerHTML = event.body.content || 'No details provided.';
@@ -500,4 +519,3 @@
     </script>
 </body>
 </html>
-
