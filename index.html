@@ -189,7 +189,7 @@
 
         // --- CLOCK AND DATE ---
         function updateClock() {
-            const now = new Date();
+            const now = new Date(); 
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const dateString = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
             liveTimeEl.textContent = timeString;
@@ -554,7 +554,7 @@
             renderCalendar();
         });
 
-        nextMonthBtn.addEventListener('click', () => {
+        nextMonthBtn.addEventListener('click', () => { // <-- This was the line with the typo
             calendarViewMode = 'month-view';
             currentDate.setMonth(currentDate.getMonth() + 1);
             renderCalendar();
@@ -595,6 +595,11 @@
 
             // Set up automatic refresh every 15 minutes
             setInterval(fetchAllEvents, 900000); // 15 minutes in milliseconds
+            
+            // Set up automatic page refresh every 30 minutes
+            setTimeout(() => {
+                location.reload();
+            }, 1800000); // 30 minutes in milliseconds
         });
     </script>
 </body>
