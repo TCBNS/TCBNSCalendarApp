@@ -315,7 +315,7 @@
                     const visibleEvents = eventsForDay.slice(0, maxEventsToShow);
 
                     visibleEvents.forEach(event => {
-                        const eventEl = createEventElement(event);
+                        const eventEl = createEventElement(event, false, day);
                         eventsContainer.appendChild(eventEl);
                     });
 
@@ -339,7 +339,7 @@
             }
         }
         
-        function createEventElement(event, isModal = false) {
+        function createEventElement(event, isModal = false, cellDate = null) {
             const categories = (event.categories && event.categories.length > 0) ? event.categories : [];
             const isHoliday = categories.includes('Holiday');
             
@@ -357,10 +357,38 @@
             contentContainer.className = `flex-grow ${isModal ? '' : 'text-xs leading-tight'}`;
             
             let timeString;
-            if (event.isAllDay) {
-                timeString = "All Day";
+            const eventStartDate = new Date(event.start.dateTime + 'Z');
+            const eventEndDate = new Date(event.end.dateTime + 'Z');
+
+            if (isModal) {
+                // Modals always show the start time or "All Day"
+                if (event.isAllDay) {
+                    timeString = "All Day";
+                } else {
+                    timeString = eventStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                }
             } else {
-                timeString = new Date(event.start.dateTime + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                // Calendar grid logic
+                const isFirstDayOfEvent = cellDate.toDateString() === eventStartDate.toDateString();
+                const isLastDayOfEvent = cellDate.toDateString() === eventEndDate.toDateString();
+                // Check if the event starts and ends on the same day
+                const isSameDayEvent = eventStartDate.toDateString() === eventEndDate.toDateString();
+
+                if (event.isAllDay) {
+                    timeString = "All Day";
+                } else if (isSameDayEvent) {
+                    // Standard one-day timed event
+                    timeString = eventStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                } else if (isFirstDayOfEvent) {
+                    // First day of a multi-day event
+                    timeString = eventStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                } else if (isLastDayOfEvent) {
+                    // Last day of a multi-day event
+                    timeString = `Ends ${eventEndDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+                } else {
+                    // Middle day of a multi-day event
+                    timeString = "All Day"; 
+                }
             }
 
             if (isModal) {
@@ -370,7 +398,12 @@
                         <div class="text-sm text-gray-300">${timeString}</div>
                     </div>`;
             } else {
-                contentContainer.innerHTML = `<strong class="font-semibold text-white">${timeString}</strong><br><span class="text-gray-200">${event.subject}</span>`;
+                if (timeString) {
+                    contentContainer.innerHTML = `<strong class="font-semibold text-white">${timeString}</strong><br><span class="text-gray-200">${event.subject}</span>`;
+                } else {
+                    // For continuation days where we don't want a time (though "All Day" now covers this)
+                    contentContainer.innerHTML = `<strong class="font-semibold text-white">${event.subject}</strong>`;
+                }
             }
             
             eventEl.appendChild(contentContainer);
@@ -401,9 +434,29 @@
         }
 
         function getEventsForDay(date) {
+            // 'date' is the current calendar cell's date.
+            const cellDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
             return allFetchedEvents.filter(event => {
                 const eventStartDate = new Date(event.start.dateTime + 'Z');
-                return eventStartDate.toDateString() === date.toDateString();
+                const eventEndDate = new Date(event.end.dateTime + 'Z');
+
+                // Normalize event start date to the beginning of its day
+                const eventStartDay = new Date(eventStartDate.getFullYear(), eventStartDate.getMonth(), eventStartDate.getDate());
+
+                let eventEndDay;
+                if (event.isAllDay) {
+                    // For all-day events, the end date from API is exclusive (e.g., ends at 00:00 on the next day)
+                    // We subtract 1 second to get the actual last day of the event.
+                    const exclusiveEndDate = new Date(eventEndDate.getTime() - 1000);
+                    eventEndDay = new Date(exclusiveEndDate.getFullYear(), exclusiveEndDate.getMonth(), exclusiveEndDate.getDate());
+                } else {
+                    // For timed events, the end date is inclusive.
+                    // An event ending at 3 PM on Nov 13 should be shown on Nov 13.
+                    eventEndDay = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate());
+                }
+
+                return cellDate >= eventStartDay && cellDate <= eventEndDay;
             });
         }
         
@@ -455,7 +508,7 @@
             dayModalEvents.innerHTML = ''; // Clear previous
             
             events.forEach(event => {
-                const eventEl = createEventElement(event, true);
+                const eventEl = createEventElement(event, true, date);
                 dayModalEvents.appendChild(eventEl);
             });
 
