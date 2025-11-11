@@ -357,8 +357,18 @@
             contentContainer.className = `flex-grow ${isModal ? '' : 'text-xs leading-tight'}`;
             
             let timeString;
-            const eventStartDate = new Date(event.start.dateTime + 'Z');
-            const eventEndDate = new Date(event.end.dateTime + 'Z');
+            let eventStartDate, eventEndDate;
+
+            if (event.isAllDay) {
+                // For All-Day events, parse as local time (don't add 'Z')
+                eventStartDate = new Date(event.start.dateTime);
+                eventEndDate = new Date(event.end.dateTime);
+            } else {
+                // For timed events, parse as UTC
+                eventStartDate = new Date(event.start.dateTime + 'Z');
+                eventEndDate = new Date(event.end.dateTime + 'Z');
+            }
+
 
             if (isModal) {
                 // Modals always show the start time or "All Day"
@@ -369,10 +379,19 @@
                 }
             } else {
                 // Calendar grid logic
-                const isFirstDayOfEvent = cellDate.toDateString() === eventStartDate.toDateString();
-                const isLastDayOfEvent = cellDate.toDateString() === eventEndDate.toDateString();
-                // Check if the event starts and ends on the same day
-                const isSameDayEvent = eventStartDate.toDateString() === eventEndDate.toDateString();
+                const eventStartDay = new Date(eventStartDate.getFullYear(), eventStartDate.getMonth(), eventStartDate.getDate());
+                
+                let eventEndDay;
+                if (event.isAllDay) {
+                    const exclusiveEndDate = new Date(eventEndDate.getTime() - 1000);
+                    eventEndDay = new Date(exclusiveEndDate.getFullYear(), exclusiveEndDate.getMonth(), exclusiveEndDate.getDate());
+                } else {
+                    eventEndDay = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate());
+                }
+
+                const isFirstDayOfEvent = cellDate.toDateString() === eventStartDay.toDateString();
+                const isLastDayOfEvent = cellDate.toDateString() === eventEndDay.toDateString();
+                const isSameDayEvent = eventStartDay.toDateString() === eventEndDay.toDateString();
 
                 if (event.isAllDay) {
                     timeString = "All Day";
@@ -438,21 +457,29 @@
             const cellDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
             return allFetchedEvents.filter(event => {
-                const eventStartDate = new Date(event.start.dateTime + 'Z');
-                const eventEndDate = new Date(event.end.dateTime + 'Z');
+                let eventStartDate, eventEndDate;
+
+                if (event.isAllDay) {
+                    // For All-Day events, parse as local time (don't add 'Z')
+                    eventStartDate = new Date(event.start.dateTime);
+                    eventEndDate = new Date(event.end.dateTime);
+                } else {
+                    // For timed events, parse as UTC
+                    eventStartDate = new Date(event.start.dateTime + 'Z');
+                    eventEndDate = new Date(event.end.dateTime + 'Z');
+                }
 
                 // Normalize event start date to the beginning of its day
                 const eventStartDay = new Date(eventStartDate.getFullYear(), eventStartDate.getMonth(), eventStartDate.getDate());
 
                 let eventEndDay;
                 if (event.isAllDay) {
-                    // For all-day events, the end date from API is exclusive (e.g., ends at 00:00 on the next day)
+                    // For all-day events, the end date from API is exclusive.
                     // We subtract 1 second to get the actual last day of the event.
                     const exclusiveEndDate = new Date(eventEndDate.getTime() - 1000);
                     eventEndDay = new Date(exclusiveEndDate.getFullYear(), exclusiveEndDate.getMonth(), exclusiveEndDate.getDate());
                 } else {
                     // For timed events, the end date is inclusive.
-                    // An event ending at 3 PM on Nov 13 should be shown on Nov 13.
                     eventEndDay = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate());
                 }
 
@@ -475,10 +502,10 @@
             });
             
             if (event.isAllDay) {
-                const startDate = new Date(event.start.dateTime + 'Z').toLocaleDateString([], { dateStyle: 'full' });
-                const endDate = new Date(event.end.dateTime + 'Z');
+                const startDate = new Date(event.start.dateTime).toLocaleDateString([], { dateStyle: 'full', timeZone: 'UTC' });
+                const endDate = new Date(event.end.dateTime);
                 endDate.setDate(endDate.getDate() - 1); // Adjust for all-day end time
-                const endDateString = endDate.toLocaleDateString([], { dateStyle: 'full' });
+                const endDateString = endDate.toLocaleDateString([], { dateStyle: 'full', timeZone: 'UTC' });
 
                 if (startDate === endDateString) {
                     eventModalTime.textContent = `All day on ${startDate}`;
@@ -495,6 +522,7 @@
             eventModalBody.innerHTML = event.body.content || 'No details provided.';
             
             eventModal.classList.remove('hidden');
+Something went wrong. Let's try again.
             setTimeout(() => eventModalContent.classList.remove('scale-95'), 10); 
         }
 
