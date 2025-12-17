@@ -108,6 +108,121 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #666;
         }
+
+        /* --- WEATHER ANIMATIONS --- */
+        @keyframes spin-slow {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-3px);
+            }
+        }
+
+        @keyframes rain-fall {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(8px);
+                opacity: 0;
+            }
+        }
+
+        @keyframes snow-fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(8px) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes drift {
+
+            0%,
+            100% {
+                transform: translateX(-2px);
+            }
+
+            50% {
+                transform: translateX(2px);
+            }
+        }
+
+        @keyframes pulse-fast {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .animate-spin-slow {
+            animation: spin-slow 12s linear infinite;
+            transform-origin: center;
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .animate-rain-1 {
+            animation: rain-fall 1s linear infinite;
+        }
+
+        .animate-rain-2 {
+            animation: rain-fall 1s linear infinite 0.3s;
+        }
+
+        .animate-rain-3 {
+            animation: rain-fall 1s linear infinite 0.6s;
+        }
+
+        .animate-snow-1 {
+            animation: snow-fall 3s linear infinite;
+            transform-origin: center;
+        }
+
+        .animate-snow-2 {
+            animation: snow-fall 3s linear infinite 1s;
+            transform-origin: center;
+        }
+
+        .animate-snow-3 {
+            animation: snow-fall 3s linear infinite 2s;
+            transform-origin: center;
+        }
+
+        .animate-drift {
+            animation: drift 4s ease-in-out infinite;
+        }
+
+        .animate-pulse-fast {
+            animation: pulse-fast 1s ease-in-out infinite;
+        }
     </style>
     <script>
         // Custom Tailwind theme colors to match the logo
@@ -399,7 +514,7 @@
         const weatherDesc = document.getElementById('weather-desc');
         const weatherIcon = document.getElementById('weather-icon');
 
-        // --- CUSTOM SVG ICON SYSTEM ---
+        // --- CUSTOM SVG ICON SYSTEM (ANIMATED) ---
         const getSVGIcon = (code, sizeClass = 'w-full h-full') => {
             // Colors
             const sunColor = "text-yellow-400";
@@ -408,26 +523,26 @@
             const snowColor = "text-cyan-300";
             const boltColor = "text-yellow-300";
 
-            // 0: Sun
-            if (code === 0) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass} ${sunColor}" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
+            // 0: Sun (Spinning Rays)
+            if (code === 0) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass} ${sunColor}" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/><path class="animate-spin-slow origin-center" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
 
-            // 1, 2: Partly Cloudy
-            if (code === 1 || code === 2) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><circle cx="16" cy="8" r="5" class="${sunColor}" fill="currentColor"/><path class="${cloudColor}" fill="currentColor" d="M19 15c0-2.8-2.2-5-5-5-2.6 0-4.8 1.9-5 4.4-.2-.1-.5-.4-.5-.4-1.7 0-3 1.3-3 3s1.3 3 3 3h10.5c2.5 0 4.5-2 4.5-4.5s-2-4.5-4.5-4.5z"/></svg>`;
+            // 1, 2: Partly Cloudy (Floating Cloud)
+            if (code === 1 || code === 2) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><circle cx="16" cy="8" r="5" class="${sunColor}" fill="currentColor"/><path class="${cloudColor} animate-float" fill="currentColor" d="M19 15c0-2.8-2.2-5-5-5-2.6 0-4.8 1.9-5 4.4-.2-.1-.5-.4-.5-.4-1.7 0-3 1.3-3 3s1.3 3 3 3h10.5c2.5 0 4.5-2 4.5-4.5s-2-4.5-4.5-4.5z"/></svg>`;
 
-            // 3: Cloudy
-            if (code === 3) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass} ${cloudColor}" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 10a5.5 5.5 0 0 0-5.3 4.1 4.5 4.5 0 0 0-8.7 1.4 4.5 4.5 0 0 0 4.5 4.5H18a6 6 0 0 0 6-6 6 6 0 0 0-5.5-4z"/></svg>`;
+            // 3: Cloudy (Floating)
+            if (code === 3) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass} ${cloudColor}" viewBox="0 0 24 24" fill="currentColor"><path class="animate-float" d="M18.5 10a5.5 5.5 0 0 0-5.3 4.1 4.5 4.5 0 0 0-8.7 1.4 4.5 4.5 0 0 0 4.5 4.5H18a6 6 0 0 0 6-6 6 6 0 0 0-5.5-4z"/></svg>`;
 
-            // 45, 48: Fog (Distinct Cloud + Lines)
-            if (code === 45 || code === 48) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" opacity="0.8" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-gray-400" d="M6 21h12M4 18h16"/></svg>`;
+            // 45, 48: Fog (Drifting Lines)
+            if (code === 45 || code === 48) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" opacity="0.8" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-gray-400 animate-drift" d="M6 21h12M4 18h16"/></svg>`;
 
-            // 51+: Rain (Big Drops)
-            if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><path class="${rainColor}" fill="currentColor" d="M10 20.5c0 .8-.4 1.5-1 1.5s-1-.7-1-1.5S8.4 19 9 19s1 .7 1 1.5zm5 0c0 .8-.4 1.5-1 1.5s-1-.7-1-1.5.4-1.5 1-1.5 1 .7 1 1.5z"/></svg>`;
+            // 51+: Rain (Falling Drops - Split paths for staggering)
+            if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><path class="${rainColor} animate-rain-1" fill="currentColor" d="M10 20.5c0 .8-.4 1.5-1 1.5s-1-.7-1-1.5S8.4 19 9 19s1 .7 1 1.5z"/><path class="${rainColor} animate-rain-2" fill="currentColor" d="M15 20.5c0 .8-.4 1.5-1 1.5s-1-.7-1-1.5.4-1.5 1-1.5 1 .7 1 1.5z"/><path class="${rainColor} animate-rain-3" fill="currentColor" d="M20 20.5c0 .8-.4 1.5-1 1.5s-1-.7-1-1.5.4-1.5 1-1.5 1 .7 1 1.5z"/></svg>`;
 
-            // 71+: Snow (Big Flakes)
-            if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><circle cx="9" cy="21" r="1.5" class="${snowColor}" fill="currentColor"/><circle cx="14" cy="21" r="1.5" class="${snowColor}" fill="currentColor"/><circle cx="19" cy="21" r="1.5" class="${snowColor}" fill="currentColor"/></svg>`;
+            // 71+: Snow (Falling Flakes - Staggered)
+            if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><circle cx="9" cy="21" r="1.5" class="${snowColor} animate-snow-1" fill="currentColor"/><circle cx="14" cy="21" r="1.5" class="${snowColor} animate-snow-2" fill="currentColor"/><circle cx="19" cy="21" r="1.5" class="${snowColor} animate-snow-3" fill="currentColor"/></svg>`;
 
-            // 95+: Storm (Bolt)
-            if (code >= 95) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><path class="${boltColor}" fill="currentColor" d="M13 18l-3 6h3l-1 2 4-5h-3l2-3z"/></svg>`;
+            // 95+: Storm (Flashing Bolt)
+            if (code >= 95) return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/><path class="${boltColor} animate-pulse-fast" fill="currentColor" d="M13 18l-3 6h3l-1 2 4-5h-3l2-3z"/></svg>`;
 
             return `<svg xmlns="http://www.w3.org/2000/svg" class="${sizeClass}" viewBox="0 0 24 24"><path class="${cloudColor}" fill="currentColor" d="M17 13c0-2.2-1.8-4-4-4-2.1 0-3.8 1.6-4 3.7A3 3 0 0 0 6 15.5 3.5 3.5 0 0 0 9.5 19H18a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.5-2.5z"/></svg>`;
         };
@@ -557,7 +672,7 @@
 
                 // Hover Interactions
                 row.addEventListener('mouseenter', () => {
-                    wmIcon.innerHTML = `<div class="w-full h-full flex items-center justify-center">${getSVGIcon(f.weather_code, 'text-7xl')}</div>`;
+                    wmIcon.innerHTML = getSVGIcon(f.weather_code, 'w-32 h-32');
                     wmTemp.textContent = `${f.max}°`;
                     wmDesc.textContent = dayName; // Show Day Name instead of Desc
                     wmWind.textContent = `${f.windMax || '--'} mph`;
@@ -579,7 +694,7 @@
                         <span class="text-white font-bold text-sm">${f.max}°</span>
                         <span class="text-gray-500 text-[10px]">${f.min}°</span>
                     </div>
-                    ${showPrecip ? `<div class="flex items-center gap-0.5 text-blue-300 text-[10px] font-bold"><svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a.75.75 0 01.75.75v5.59l2.44-2.44a.75.75 0 111.06 1.06l-3.75 3.75a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 111.06-1.06l2.44 2.44V2.75A.75.75 0 0110 2z"/></svg> ${precipProb}%</div>` : '<div class="h-[15px]"></div>'}
+                    ${showPrecip ? `<div class="flex items-center gap-0.5 text-blue-300 text-[10px] font-bold" title="Precipitation Chance"><svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2c-5 6-6 8-6 11s2.5 5 6 5 6-2 6-5-1-5-6-11z"/></svg> ${precipProb}%</div>` : '<div class="h-[15px]"></div>'}
                 `;
                 listEl.appendChild(row);
             });
