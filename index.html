@@ -831,7 +831,10 @@
                     weatherEl.className = 'absolute top-1 right-2 flex items-center gap-1 opacity-90 cursor-pointer hover:scale-110 transition-transform z-20';
                     weatherEl.innerHTML = `
                         <div class="w-6 h-6 text-white drop-shadow-md flex items-center justify-center">${getSVGIcon(f.weather_code, 'text-xl')}</div>
-                        <span class="text-[10px] items-center flex font-bold text-gray-200 bg-black/30 px-1 rounded">${f.max}°</span>
+                        <span class="text-[10px] items-center flex font-bold text-gray-200 bg-black/30 px-2 py-0.5 rounded whitespace-nowrap">
+                            ${f.max}°
+                            <span class="text-gray-400 font-normal ml-1">/ ${f.min}°</span>
+                        </span>
                     `;
                     weatherEl.addEventListener('click', (e) => {
                         e.stopPropagation(); // prevent triggering day modal
