@@ -852,7 +852,7 @@
 
                     eventsForDay.forEach(event => {
                         try {
-                            const eventEl = createEventElement(event);
+                            const eventEl = createEventElement(event, false, day);
                             eventsContainer.appendChild(eventEl);
                         } catch (err) {
                             console.warn('Skipping malformed event:', event, err);
@@ -867,7 +867,7 @@
             }
         }
 
-        function createEventElement(event, isModal = false) {
+        function createEventElement(event, isModal = false, renderDate = null) {
             const categories = (event.categories && event.categories.length > 0) ? event.categories : [];
             const isHoliday = categories.includes('Holiday');
 
@@ -890,7 +890,25 @@
                 timeText = "All Day";
             } else {
                 // Regular events: Treat as UTC (+ 'Z') to convert to local system time
-                timeText = new Date(event.start.dateTime + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                const eventStart = new Date(event.start.dateTime + 'Z');
+                const eventEnd = new Date(event.end.dateTime + 'Z');
+
+                if (renderDate) {
+                    // Check if this is the start day, end day, or middle day
+                    const isStartDay = eventStart.toDateString() === renderDate.toDateString();
+                    const isEndDay = eventEnd.toDateString() === renderDate.toDateString();
+
+                    if (isStartDay) {
+                        timeText = eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                    } else if (isEndDay) {
+                        timeText = "Ends " + eventEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                    } else {
+                        timeText = "All Day";
+                    }
+                } else {
+                    // Fallback if no renderDate provided (e.g. modal view might not pass it, though we should probably fix that too if needed, but for now modal shows full details)
+                    timeText = eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                }
             }
 
             if (isModal) {
@@ -1009,7 +1027,7 @@
             dayModalEvents.innerHTML = ''; // Clear previous
 
             events.forEach(event => {
-                const eventEl = createEventElement(event, true);
+                const eventEl = createEventElement(event, true, date);
                 dayModalEvents.appendChild(eventEl);
             });
 
