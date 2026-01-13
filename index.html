@@ -949,10 +949,19 @@
                     // Show if date is >= start AND date < end
                     return checkDate.getTime() >= startDate.getTime() && checkDate.getTime() < endDate.getTime();
                 } else {
-                    // Regular events: Convert to local date to check against calendar day
-                    // Must add 'Z' to treat start string as UTC
+                    // Regular events: Check for overlap with the calendar day
+                    // Treat start/end strings as UTC to be consistent with existing logic
                     const localEventStart = new Date(event.start.dateTime + 'Z');
-                    return localEventStart.toDateString() === date.toDateString();
+                    const localEventEnd = new Date(event.end.dateTime + 'Z');
+
+                    // Define the day's time range (00:00 to 00:00 next day)
+                    const dayStart = checkDate.getTime();
+                    const dayNext = new Date(checkDate);
+                    dayNext.setDate(dayNext.getDate() + 1);
+                    const dayEnd = dayNext.getTime();
+
+                    // Check for overlap: EventStart < DayEnd AND EventEnd > DayStart
+                    return localEventStart.getTime() < dayEnd && localEventEnd.getTime() > dayStart;
                 }
             });
         }
