@@ -724,16 +724,15 @@
                 }
                 allFetchedEvents = await response.json();
 
-                // Update Last Updated time
-                const now = new Date();
-                const updatedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                document.getElementById('last-updated').textContent = `Last synced: ${updatedTime}`;
-
                 renderCalendar();
                 renderLegend();
+                return true;
             } catch (error) {
                 console.error('An error occurred:', error);
-                showError(`Failed to fetch calendar events: ${error.message}`);
+                if (isInitialLoad) {
+                    showError(`Failed to fetch calendar events: ${error.message}`);
+                }
+                return false;
             } finally {
                 if (isInitialLoad) {
                     loader.classList.add('hidden');
@@ -1082,9 +1081,13 @@
         async function refreshDashboard() {
             console.log('🔄 Dashboard Auto-Refresh triggered...');
             try {
-                await Promise.all([fetchAllEvents(), fetchWeather()]);
-                const now = new Date();
-                lastUpdatedTxt.textContent = `Last synced: ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+                const [eventsSuccess] = await Promise.all([fetchAllEvents(), fetchWeather()]);
+                if (eventsSuccess) {
+                    const now = new Date();
+                    lastUpdatedTxt.textContent = `Last synced: ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+                } else {
+                    lastUpdatedTxt.textContent = 'Sync failed - Offline';
+                }
             } catch (err) {
                 console.error('Auto-refresh failed:', err);
             }
