@@ -375,6 +375,100 @@
         let currentConditions = {}; // Store wind/humidity // Store weather data: 'YYYY-MM-DD' -> { min, max, icon }
         let calendarViewMode = 'today-view'; // 'today-view' or 'month-view'
 
+        function getEventSubject(event) {
+            const subject = event && typeof event.subject === 'string' ? event.subject.trim() : '';
+            return subject || 'No Subject';
+        }
+
+        function getEventStartDateTime(event) {
+            return event?.start?.dateTime || event?.startDateTime || '';
+        }
+
+        function getEventEndDateTime(event) {
+            return event?.end?.dateTime || event?.endDateTime || '';
+        }
+
+        function getEventBodyHtml(event) {
+            if (event && typeof event.bodyHtml === 'string') return event.bodyHtml;
+            if (event?.body && typeof event.body.content === 'string') return event.body.content;
+            return '';
+        }
+
+        function getEventBodyPreview(event) {
+            return event && typeof event.bodyPreview === 'string' ? event.bodyPreview : '';
+        }
+
+        function toUtcDate(dateTime) {
+            if (!dateTime) return null;
+            const hasTimezone = /(?:z|[+-]\d{2}:\d{2})$/i.test(dateTime);
+            return new Date(hasTimezone ? dateTime : `${dateTime}Z`);
+        }
+
+        function sanitizeHtml(html) {
+            if (!html) return '';
+
+            const template = document.createElement('template');
+            template.innerHTML = String(html);
+
+            const blockedTags = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'svg', 'math', 'form', 'input', 'button', 'textarea', 'select']);
+            const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'i', 'li', 'ol', 'p', 'pre', 'span', 'strong', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul', 'img']);
+            const safeUrl = (value) => /^(https?:|mailto:|tel:|\/|#)/i.test(String(value || '').trim());
+
+            const cleanNode = (node) => {
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+                const tagName = node.tagName.toLowerCase();
+                if (blockedTags.has(tagName)) {
+                    node.remove();
+                    return;
+                }
+
+                if (!allowedTags.has(tagName)) {
+                    node.replaceWith(document.createTextNode(node.textContent || ''));
+                    return;
+                }
+
+                Array.from(node.attributes).forEach(attr => {
+                    const name = attr.name.toLowerCase();
+                    const value = attr.value || '';
+
+                    if (name.startsWith('on') || name === 'style') {
+                        node.removeAttribute(attr.name);
+                        return;
+                    }
+
+                    if (['href', 'src'].includes(name) && !safeUrl(value)) {
+                        node.removeAttribute(attr.name);
+                        return;
+                    }
+
+                    if (tagName === 'a' && !['href', 'title', 'target', 'rel'].includes(name)) {
+                        node.removeAttribute(attr.name);
+                        return;
+                    }
+
+                    if (tagName === 'img' && !['src', 'alt', 'title'].includes(name)) {
+                        node.removeAttribute(attr.name);
+                    }
+                });
+
+                if (tagName === 'a') {
+                    node.setAttribute('target', '_blank');
+                    node.setAttribute('rel', 'noopener noreferrer');
+                }
+            };
+
+            const walk = (node) => {
+                Array.from(node.children).forEach(child => {
+                    cleanNode(child);
+                    if (child.parentNode) walk(child);
+                });
+            };
+
+            walk(template.content);
+            return template.innerHTML;
+        }
+
         // --- CATEGORY COLOR MAPPING ---
         // --- CATEGORY COLOR MAPPING (GLASS + ACCENT) ---
         const categoryColors = {
@@ -609,7 +703,8 @@
                     const errorData = await response.json();
                     throw new Error(errorData.message || `Request failed with status: ${response.status}`);
                 }
-                allFetchedEvents = await response.json();
+                const payload = await response.json();
+                allFetchedEvents = Array.isArray(payload) ? payload : (payload.events || []);
 
                 return true;
             } catch (error) {
@@ -754,6 +849,7 @@
         function createEventElement(event, isModal = false, renderDate = null) {
             const categories = (event.categories && event.categories.length > 0) ? event.categories : [];
             const isHoliday = categories.includes('Holiday');
+            const subject = getEventSubject(event);
 
             let colorInfo;
             if (isHoliday) {
@@ -774,13 +870,13 @@
                 timeText = "All Day";
             } else {
                 // Regular events: Treat as UTC (+ 'Z') to convert to local system time
-                const eventStart = new Date(event.start.dateTime + 'Z');
-                const eventEnd = new Date(event.end.dateTime + 'Z');
+                const eventStart = toUtcDate(getEventStartDateTime(event));
+                const eventEnd = toUtcDate(getEventEndDateTime(event));
 
                 if (renderDate) {
                     // Check if this is the start day, end day, or middle day
-                    const isStartDay = eventStart.toDateString() === renderDate.toDateString();
-                    const isEndDay = eventEnd.toDateString() === renderDate.toDateString();
+                    const isStartDay = eventStart && eventStart.toDateString() === renderDate.toDateString();
+                    const isEndDay = eventEnd && eventEnd.toDateString() === renderDate.toDateString();
 
                     if (isStartDay) {
                         timeText = eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -791,18 +887,28 @@
                     }
                 } else {
                     // Fallback if no renderDate provided (e.g. modal view might not pass it, though we should probably fix that too if needed, but for now modal shows full details)
-                    timeText = eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                    timeText = eventStart ? eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
                 }
             }
 
             if (isModal) {
-                contentContainer.innerHTML = `
-                    <div>
-                        <div class="font-bold text-white">${event.subject}</div>
-                        <div class="text-sm text-gray-300">${timeText}</div>
-                    </div>`;
+                const wrapper = document.createElement('div');
+                const titleEl = document.createElement('div');
+                titleEl.className = 'font-bold text-white';
+                titleEl.textContent = subject;
+                const timeEl = document.createElement('div');
+                timeEl.className = 'text-sm text-gray-300';
+                timeEl.textContent = timeText;
+                wrapper.append(titleEl, timeEl);
+                contentContainer.appendChild(wrapper);
             } else {
-                contentContainer.innerHTML = `<strong class="font-semibold text-white">${timeText}</strong><br><span class="text-gray-200">${event.subject}</span>`;
+                const timeEl = document.createElement('strong');
+                timeEl.className = 'font-semibold text-white';
+                timeEl.textContent = timeText;
+                const subjectEl = document.createElement('span');
+                subjectEl.className = 'text-gray-200';
+                subjectEl.textContent = subject;
+                contentContainer.append(timeEl, document.createElement('br'), subjectEl);
             }
 
             eventEl.appendChild(contentContainer);
@@ -834,8 +940,12 @@
 
         function getEventsForDay(date) {
             return allFetchedEvents.filter(event => {
-                const eventStartDate = new Date(event.start.dateTime);
-                const eventEndDate = new Date(event.end.dateTime);
+                const eventStartDateTime = getEventStartDateTime(event);
+                const eventEndDateTime = getEventEndDateTime(event);
+                if (!eventStartDateTime || !eventEndDateTime) return false;
+
+                const eventStartDate = new Date(eventStartDateTime);
+                const eventEndDate = new Date(eventEndDateTime);
 
                 // Normalize dates to midnight for comparison
                 const checkDate = new Date(date);
@@ -853,8 +963,9 @@
                 } else {
                     // Regular events: Check for overlap with the calendar day
                     // Treat start/end strings as UTC to be consistent with existing logic
-                    const localEventStart = new Date(event.start.dateTime + 'Z');
-                    const localEventEnd = new Date(event.end.dateTime + 'Z');
+                    const localEventStart = toUtcDate(eventStartDateTime);
+                    const localEventEnd = toUtcDate(eventEndDateTime);
+                    if (!localEventStart || !localEventEnd) return false;
 
                     // Define the day's time range (00:00 to 00:00 next day)
                     const dayStart = checkDate.getTime();
@@ -870,7 +981,8 @@
 
         // --- MODAL LOGIC ---
         function showEventDetails(event) {
-            eventModalTitle.textContent = event.subject || 'No Subject';
+            eventModalTitle.textContent = getEventSubject(event);
+            eventModalBody.textContent = '';
 
             eventModalCategory.innerHTML = '';
             const categories = (event.categories && event.categories.length > 0) ? event.categories : ['No category'];
@@ -885,17 +997,27 @@
 
             // Use local date parsing (remove + 'Z')
             if (event.isAllDay) {
-                const dateStr = new Date(event.start.dateTime).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+                const dateStr = new Date(getEventStartDateTime(event)).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
                 eventModalTime.textContent = `${dateStr} (All Day)`;
             } else {
                 // Regular events: Treat as UTC (+ 'Z')
-                const startTime = new Date(event.start.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-                const endTime = new Date(event.end.dateTime + 'Z').toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+                const startDate = toUtcDate(getEventStartDateTime(event));
+                const endDate = toUtcDate(getEventEndDateTime(event));
+                const startTime = startDate ? startDate.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' }) : 'Unknown start';
+                const endTime = endDate ? endDate.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' }) : 'Unknown end';
                 eventModalTime.textContent = `From ${startTime} to ${endTime}`;
             }
 
             eventModalLocation.textContent = (event.location && event.location.displayName) || 'No location specified';
-            eventModalBody.innerHTML = (event.body && event.body.content) || 'No details provided.';
+            const bodyHtml = getEventBodyHtml(event);
+            const bodyPreview = getEventBodyPreview(event);
+            if (bodyHtml) {
+                eventModalBody.innerHTML = sanitizeHtml(bodyHtml);
+            } else if (bodyPreview) {
+                eventModalBody.textContent = bodyPreview;
+            } else {
+                eventModalBody.textContent = 'No details provided.';
+            }
 
             eventModal.classList.remove('hidden');
             setTimeout(() => eventModalContent.classList.remove('scale-95'), 10);
